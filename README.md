@@ -1,0 +1,2 @@
+# korea_word_spider2
+spider_korea_word的新版本
