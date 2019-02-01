@@ -50,7 +50,6 @@ class Praser:
             content str
         '''
         url=r.url
-        print('url=%s'%url)
         cid=int(self.cid_pattern.search(url).group(0).split('=')[1])
         categoryid=int(self.categoryid_pattern.search(url).group(0).split('=')[1])
 

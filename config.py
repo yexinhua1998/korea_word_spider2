@@ -12,3 +12,13 @@ requests_arg={
     'max_retry':10,
     'timeout':10
 }
+
+content_saver_arg={
+    'commit_amount':100
+}
+
+spider_arg={
+    'crawler_thread_amount':128,
+    'praser_amount':4,
+    'saver_thread_amount':64
+}
