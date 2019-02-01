@@ -6,3 +6,9 @@ db_conn={
 }
 
 doc_amount=5735142
+
+#default args of requests.get
+requests_arg={
+    'max_retry':10,
+    'timeout':10
+}
