@@ -68,8 +68,14 @@ class DBConnect:
         self.conn=psycopg2.connect(**config.db_conn)
         self.cursor=self.conn.cursor()
 
+    def close(self):
+        return self.conn.close()
+
     def newcursor(self):
         return self.conn.cursor()
+
+    def commit(self):
+        return self.conn.commit()
 
     def getu(self):
         '''
@@ -81,3 +87,9 @@ class DBConnect:
         data=self.cursor.fetchall()
         data=list(map(lambda x:x[0],data))
         return data
+
+    def save_raw_content(self,docid,cid,categoryid,content):
+        self.cursor.execute('SELECT SAVERAWCONTENT(%d,%d,%d,$$%s$$)'\
+        %(docid,cid,categoryid,content))
+        result=self.cursor.fetchall()[0]
+        return result
