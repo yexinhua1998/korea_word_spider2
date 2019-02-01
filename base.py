@@ -7,6 +7,7 @@ import config
 import bs4
 from bs4 import BeautifulSoup
 import re
+import psycopg2
 
 class Web:
     @staticmethod
@@ -58,3 +59,25 @@ class Praser:
         content=body.find('div',attrs={'id':'content'})
 
         return (cid,categoryid,str(content))
+
+class DBConnect:
+    '''
+    数据库连接
+    '''
+    def __init__(self):
+        self.conn=psycopg2.connect(**config.db_conn)
+        self.cursor=self.conn.cursor()
+
+    def newcursor(self):
+        return self.conn.cursor()
+
+    def getu(self):
+        '''
+        获取unget表的所有数据
+        return:
+            data 元素为所有unget数据的列表
+        '''
+        self.cursor.execute('SELECT * FROM UNGET;')
+        data=self.cursor.fetchall()
+        data=list(map(lambda x:x[0],data))
+        return data
