@@ -8,6 +8,7 @@ import bs4
 from bs4 import BeautifulSoup
 import re
 import psycopg2
+from multiprocessing import Lock,Semaphore,Manager,Process
 
 class Web:
     @staticmethod
@@ -92,3 +93,28 @@ class DBConnect:
         %(docid,cid,categoryid,content))
         result=self.cursor.fetchall()[0]
         return result
+
+manager=Manager()
+class PQ:
+    '''
+    进程之间的通信队列类
+    '''
+    def __init__(self):
+        self.lock=Lock()
+        self.signal=Semaphore(0)
+        #self.manager=Manager()
+        #self.q=self.manager.list()
+        self.q=manager.list()
+
+    def put(self,data):
+        self.lock.acquire()
+        self.q.append(data)
+        self.signal.release()
+        self.lock.release()
+
+    def get(self):
+        self.signal.acquire()
+        self.lock.acquire()
+        data=self.q.pop(0)
+        self.lock.release()
+        return data

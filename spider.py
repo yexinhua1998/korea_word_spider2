@@ -1,7 +1,7 @@
 import base
 import threading
 from queue import Queue as TQ
-from multiprocessing import Queue as PQ
+from base import PQ
 from multiprocessing import Process,Manager,Lock,Semaphore
 import config
 
@@ -32,50 +32,64 @@ class SpiderThread(threading.Thread):
             self.q_out.put((docid,r))
         pass
 
-def crawl(list_out,lock,signal,thread_amount=64):
+def subcrawl(q_in,crawl2prase,thread_amount):
     '''
-    爬取函数
+    爬取的子进程
     '''
-    connect=base.DBConnect()
-    u=connect.getu()
-    connect.close()
-    q_in=TQ()
-    q_out=TQ()
-    tlist=[SpiderThread(q_in,q_out,i+1) for i in range(thread_amount)]
+    q1=TQ()
+    q2=TQ()
+    tlist=[SpiderThread(q1,q2,i+1) for i in range(thread_amount)]
     for t in tlist:
         t.start()
-    for i in u:
-        q_in.put(i)
+    while True:
+        data=q_in.get()
+        if data is None:
+            break
+        q1.put(data)
 
     while True:
-        data=q_out.get()
-        lock.acquire()
-        list_out.append(data)
-        signal.release()
-        lock.release()
+        data=q2.get()
+        crawl2prase.put(data)
         print('transfer doc %d to praser'%data[0])
 
     for t in tlist:
         t.join()
     pass
 
-def prase_responese(list_in,list_out,lock_in,lock_out,s_in,s_out):
+
+def crawl(crawl2prase,thread_amount=64,p_amount=4):
+    '''
+    爬取函数
+    '''
+    connect=base.DBConnect()
+    u=connect.getu()
+    connect.close()
+    q_in=PQ()
+    plist=[Process(target=subcrawl,args=(q_in,crawl2prase,thread_amount))
+    for i in range(p_amount)]
+    for p in plist:
+        p.start()
+    for i in u:
+        q_in.put(i)
+
+    for i in range(p_amount):
+        q_in.put(None)#给出结尾
+
+    for p in plist:
+        p.join()
+    pass
+
+def prase_responese(q_in,q_out):
     praser=base.Praser()
     while True:
-        s_in.acquire()
-        lock_in.acquire()
-        docid,r=list_in.pop(0)
-        lock_in.release()
+        docid,r=q_in.get()
 
         if r==None:
             cid,categoryid,content=0,0,''
         else:
             cid,categoryid,content=praser.get_raw(r)
 
-        lock_out.acquire()
-        list_out.append((docid,cid,categoryid,content))
-        s_out.release()
-        lock_out.release()
+        q_out.put((docid,cid,categoryid,content))
         print('prase doc %d'%docid)
     pass
 
@@ -104,21 +118,18 @@ class ContentSaver(threading.Thread):
             self.conn.commit()
         pass
 
-def save_content(list_in,lock,signal,thread_amount=64):
+def save_content(q_in,thread_amount=64):
     '''
     将爬取到的页面保存到数据库
     '''
-    q_in=TQ()
-    tlist=[ContentSaver(q_in,i+1) for i in range(thread_amount)]
+    q2thread=TQ()
+    tlist=[ContentSaver(q2thread,i+1) for i in range(thread_amount)]
     for t in tlist:
         t.start()
 
     while True:
-        signal.acquire()
-        lock.acquire()
-        data=list_in.pop(0)
-        lock.release()
-        q_in.put(data)
+        data=q_in.get()
+        q2thread.put(data)
     for t in tlist:
         t.join()
     pass
@@ -127,27 +138,21 @@ def spider(**kvargs):
     arg=config.spider_arg
     arg.update(kvargs)
 
-    manager=Manager()
-    crawl2prase=manager.list()
-    prase2save=manager.list()
-    #列表取出和放入的互斥信号量
-    lock1=Lock()
-    lock2=Lock()
-    #指示列表内容数量的信号量
-    s1=Semaphore(0)
-    s2=Semaphore(0)
+    crawl2prase=base.PQ()
+    prase2save=base.PQ()
 
-    crawlp=Process(target=crawl,args=(crawl2prase,lock1,s1,arg['crawler_thread_amount']))
+    crawlp=Process(target=crawl,
+    args=(crawl2prase,arg['crawler_thread_amount'],arg['crawler_p_amount']))
     crawlp.start()
 
     praser_list=[Process(target=prase_responese,
-    args=(crawl2prase,prase2save,lock1,lock2,s1,s2))
+    args=(crawl2prase,prase2save))
     for i in range(arg['praser_amount'])]
     for p in praser_list:
         p.start()
 
     savep=Process(target=save_content,
-    args=(prase2save,lock2,s2,arg['saver_thread_amount']))
+    args=(prase2save,arg['saver_thread_amount']))
     savep.start()
 
     crawlp.join()
