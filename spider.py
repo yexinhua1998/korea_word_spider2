@@ -47,12 +47,12 @@ def subcrawl(q_in,crawl2prase,thread_amount):
         if data is None:
             break
         q1.put(data)
-    print('None is getted')
-
-    while True:
         data=q2.get()
         crawl2prase.put(data)
         print('transfer doc %d to praser'%data[0])
+    print('None is getted')
+
+    #while True:
 
     for t in tlist:
         t.join()
