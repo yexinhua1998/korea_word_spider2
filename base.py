@@ -10,10 +10,21 @@ import re
 import psycopg2
 from multiprocessing import Lock,Semaphore,Manager,Process
 
+requests.adapters.DEFAULT_RETRIES=config.web['low_level_retry']
+
 class Web:
-    @staticmethod
-    def get(url,**kvargs):
-        arg=config.requests_arg
+    '''
+    web连接类
+    '''
+    def __init__(self):
+        '''
+        为了提升性能，使用一个session，不keep-alive的连接方式
+        '''
+        self.s=requests.session()
+        self.s.keep_alive=False
+
+    def get(self,url,**kvargs):
+        arg=config.web
         arg.update(kvargs)
         timeout=arg['timeout']
         max_retry=arg['max_retry']
@@ -21,13 +32,21 @@ class Web:
         retry=0
         while retry<max_retry:
             try:
-                r=requests.get(url,timeout=timeout)
+                r=self.s.get(url,timeout=timeout)
                 r.raise_for_status()
                 return r
             except requests.exceptions.Timeout:
                 print('web.get:timeout retry:\n%s'%url)
                 retry+=1
+            except requests.exceptions.HTTPError:
+                if r.status_code==404:
+                    raise Exception('404')
+                retry+=1
+            except requests.exceptions.ConnectionError:
+                retry+=1
             except Exception as e:
+                print('web.get')
+                print(e)
                 raise e
         raise Exception('web.get:retry times larger than max_retry')
 
@@ -89,8 +108,10 @@ class DBConnect:
         return data
 
     def save_raw_content(self,docid,cid,categoryid,content):
-        self.cursor.execute('SELECT SAVERAWCONTENT(%d,%d,%d,$DATA$%s$DATA$)'\
+        #print('executing command')
+        self.cursor.execute('SELECT SAVERAWCONTENT(%d,%d,%d,$DATA$%s$DATA$);'\
         %(docid,cid,categoryid,content))
+        #print('fetching result')
         result=self.cursor.fetchall()[0]
         return result
 
