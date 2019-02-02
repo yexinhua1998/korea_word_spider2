@@ -89,7 +89,7 @@ class DBConnect:
         return data
 
     def save_raw_content(self,docid,cid,categoryid,content):
-        self.cursor.execute('SELECT SAVERAWCONTENT(%d,%d,%d,$$%s$$)'\
+        self.cursor.execute('SELECT SAVERAWCONTENT(%d,%d,%d,$DATA$%s$DATA$)'\
         %(docid,cid,categoryid,content))
         result=self.cursor.fetchall()[0]
         return result
@@ -120,7 +120,7 @@ class PQ:
         self.lock.release()
         return data
 
-    def pus_list(self,data):
+    def put_many(self,data):
         '''
         将一个列表直接放进去，避免频繁操作
         '''

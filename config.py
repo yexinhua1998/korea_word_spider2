@@ -18,8 +18,8 @@ content_saver_arg={
 }
 
 spider_arg={
-    'crawler_p_amount':4,
-    'crawler_thread_amount':64,
+    'crawler_p_amount':40,
+    'crawler_thread_amount':80,
     'praser_amount':4,
     'saver_thread_amount':20
 }
