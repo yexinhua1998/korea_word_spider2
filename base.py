@@ -95,6 +95,7 @@ class DBConnect:
         return result
 
 manager=Manager()
+
 class PQ:
     '''
     进程之间的通信队列类
@@ -118,3 +119,38 @@ class PQ:
         data=self.q.pop(0)
         self.lock.release()
         return data
+
+    def pus_list(self,data):
+        '''
+        将一个列表直接放进去，避免频繁操作
+        '''
+        self.lock.acquire()
+        print('put_list:get the lock')
+        size=len(data)
+        self.q+=data
+        print('put_list:the queue add the list success')
+        for i in range(len(data)):
+            self.signal.release()
+        print('re-init the signal success')
+        self.lock.release()
+        print('put list success')
+
+    def get_many(self,data,num=1000):
+        '''
+        获取size数量的data，返回一个列表
+        如果列表剩下不足size个，则全部返回
+        '''
+        self.lock.acquire()
+        size=len(self.q)
+        if(size>num):
+            temp=self.q[:num]
+            self.q=self.q[num:]
+            getted_num=num
+        else:
+            getted_num=size
+            temp=self.q[:]
+            self.q=manager.list()
+        for i in range(getted_num):
+            self.signal.acquire()
+        self.lock.release()
+        return temp

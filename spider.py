@@ -23,11 +23,11 @@ class SpiderThread(threading.Thread):
             url='https://terms.naver.com/entry.nhn?docId=%d'%docid
             try:
                 r=base.Web.get(url)
-                print('get doc %d success'%docid)
+                #print('get doc %d success'%docid)
             except Exception as e:
                 #with open('spider_log.txt','a',encoding='utf-8') as f:
                 #    f.write(str(e))
-                print('error:url=%s'%url)
+                #print('error:url=%s'%url)
                 r=None
             self.q_out.put((docid,r))
         pass
@@ -43,9 +43,11 @@ def subcrawl(q_in,crawl2prase,thread_amount):
         t.start()
     while True:
         data=q_in.get()
+        print('get data:%d'%data)
         if data is None:
             break
         q1.put(data)
+    print('None is getted')
 
     while True:
         data=q2.get()
@@ -69,11 +71,12 @@ def crawl(crawl2prase,thread_amount=64,p_amount=4):
     for i in range(p_amount)]
     for p in plist:
         p.start()
-    for i in u:
-        q_in.put(i)
-
+    print('putting u to q_in')
+    q_in.put_many(u)
+    print('all u is put 2 subcrawl')
     for i in range(p_amount):
         q_in.put(None)#给出结尾
+    print('None is put tu subcrawl')
 
     for p in plist:
         p.join()
