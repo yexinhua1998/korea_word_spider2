@@ -8,18 +8,16 @@ db_conn={
 doc_amount=5735142
 
 #default args of requests.get
-requests_arg={
-    'max_retry':10,
-    'timeout':10
+web={
+    'low_level_retry':10,
+    'max_retry':20,
+    'timeout':3
 }
 
 content_saver_arg={
     'commit_amount':100
 }
 
-spider_arg={
-    'crawler_p_amount':40,
-    'crawler_thread_amount':80,
-    'praser_amount':4,
-    'saver_thread_amount':20
+spider={
+    'process_num':50
 }
