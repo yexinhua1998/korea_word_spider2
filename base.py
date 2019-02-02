@@ -8,11 +8,23 @@ import bs4
 from bs4 import BeautifulSoup
 import re
 import psycopg2
+from multiprocessing import Lock,Semaphore,Manager,Process
+
+requests.adapters.DEFAULT_RETRIES=config.web['low_level_retry']
 
 class Web:
-    @staticmethod
-    def get(url,**kvargs):
-        arg=config.requests_arg
+    '''
+    web连接类
+    '''
+    def __init__(self):
+        '''
+        为了提升性能，使用一个session，不keep-alive的连接方式
+        '''
+        self.s=requests.session()
+        self.s.keep_alive=False
+
+    def get(self,url,**kvargs):
+        arg=config.web
         arg.update(kvargs)
         timeout=arg['timeout']
         max_retry=arg['max_retry']
@@ -20,13 +32,21 @@ class Web:
         retry=0
         while retry<max_retry:
             try:
-                r=requests.get(url,timeout=timeout)
+                r=self.s.get(url,timeout=timeout)
                 r.raise_for_status()
                 return r
             except requests.exceptions.Timeout:
                 print('web.get:timeout retry:\n%s'%url)
                 retry+=1
+            except requests.exceptions.HTTPError:
+                if r.status_code==404:
+                    raise Exception('404')
+                retry+=1
+            except requests.exceptions.ConnectionError:
+                retry+=1
             except Exception as e:
+                print('web.get')
+                print(e)
                 raise e
         raise Exception('web.get:retry times larger than max_retry')
 
@@ -88,7 +108,70 @@ class DBConnect:
         return data
 
     def save_raw_content(self,docid,cid,categoryid,content):
-        self.cursor.execute('SELECT SAVERAWCONTENT(%d,%d,%d,$$%s$$)'\
+        #print('executing command')
+        self.cursor.execute('SELECT SAVERAWCONTENT(%d,%d,%d,$DATA$%s$DATA$);'\
         %(docid,cid,categoryid,content))
+        #print('fetching result')
         result=self.cursor.fetchall()[0]
         return result
+
+manager=Manager()
+
+class PQ:
+    '''
+    进程之间的通信队列类
+    '''
+    def __init__(self):
+        self.lock=Lock()
+        self.signal=Semaphore(0)
+        #self.manager=Manager()
+        #self.q=self.manager.list()
+        self.q=manager.list()
+
+    def put(self,data):
+        self.lock.acquire()
+        self.q.append(data)
+        self.signal.release()
+        self.lock.release()
+
+    def get(self):
+        self.signal.acquire()
+        self.lock.acquire()
+        data=self.q.pop(0)
+        self.lock.release()
+        return data
+
+    def put_many(self,data):
+        '''
+        将一个列表直接放进去，避免频繁操作
+        '''
+        self.lock.acquire()
+        print('put_list:get the lock')
+        size=len(data)
+        self.q+=data
+        print('put_list:the queue add the list success')
+        for i in range(len(data)):
+            self.signal.release()
+        print('re-init the signal success')
+        self.lock.release()
+        print('put list success')
+
+    def get_many(self,data,num=1000):
+        '''
+        获取size数量的data，返回一个列表
+        如果列表剩下不足size个，则全部返回
+        '''
+        self.lock.acquire()
+        size=len(self.q)
+        if(size>num):
+            temp=self.q[:num]
+            self.q=self.q[num:]
+            getted_num=num
+        else:
+            getted_num=size
+            temp=self.q[:]
+            self.q=manager.list()
+        for i in range(getted_num):
+            self.signal.acquire()
+        self.lock.release()
+        return temp
