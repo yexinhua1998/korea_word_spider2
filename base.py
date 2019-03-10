@@ -10,6 +10,10 @@ import re
 import psycopg2
 from multiprocessing import Lock,Semaphore,Manager,Process
 
+from _base.parse.get_content import get_content
+from _base.parse.wordsplit import split as wordsplit
+from _base.parse.common import tag2string
+
 requests.adapters.DEFAULT_RETRIES=config.web['low_level_retry']
 
 class Web:
@@ -50,7 +54,7 @@ class Web:
                 raise e
         raise Exception('web.get:retry times larger than max_retry')
 
-class Praser:
+class Parser:
     '''
     解析器
     主要存储各种解析函数
@@ -78,6 +82,28 @@ class Praser:
         content=body.find('div',attrs={'id':'content'})
 
         return (cid,categoryid,str(content))
+
+    def parse_raw_content(self,raw_content):
+        '''
+        将raw content解析为可以进入数据库的数据的方法
+        args:raw_content (str) 未解析的数据
+        return: cite,word,cw,jw,kw,ew,content
+        cite:引用字段
+        word:词字段
+        desc:desc字段
+        cw,jw,kw,ew:chinese word;japanese word;korean word;english word
+        content (key1,key2,...,keyn)
+        '''
+
+        soup=BeautifulSoup(raw_content,'lxml')
+        title=soup.find('div',{'class':'headword_title'})
+        cite=tag2string(title.find('p',{'class':'cite'}))
+        word=tag2string(title.find('h2',{'class':'headword'}))
+        desc=tag2string(title.find('p',{'class':'desc'}))
+        cw,jw,kw,ew=wordsplit(title.find('p',{'class':'word'}))
+        content=get_content(soup.find('div',{'id':'size_ct'}))
+        return cite.strip('\n'),word,desc,cw,jw,kw,ew,content
+        pass
 
 class DBConnect:
     '''

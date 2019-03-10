@@ -21,3 +21,7 @@ content_saver_arg={
 spider={
     'process_num':50
 }
+
+parse={
+    'process_num':80
+}

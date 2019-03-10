@@ -62,7 +62,11 @@ def word2list(word):
     result=[]
     for item in word.contents:
         if(isinstance(item,bs4.element.Tag)):
-            result.append(common.tag2string(item))
+            if(item.name=='a'):
+                continue
+            temp=common.tag2string(item)
+            if(temp!=''):
+                result.append(temp)
     return result
 
 def split(word):

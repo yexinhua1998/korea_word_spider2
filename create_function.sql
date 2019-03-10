@@ -36,3 +36,21 @@ BEGIN
 END;
 $$
 LANGUAGE PLPGSQL;
+
+CREATE FUNCTION SAVECONTENT
+(_docid int,_cid int ,_categoryid int,_word text,_cite text,_desc text,
+_cw text,_jw text,_kw text,_ew text,_att text,_txt text,_dic text,_quote text,
+_box text,_naml text,_directory text,_summary text,_other text)
+RETURNS boolean
+--保存一个content
+AS $$
+BEGIN
+    INSERT INTO CONTENT
+    VALUES(_docid,_cid,_categoryid,_word,_cite,_desc,_cw,_jw,
+    _kw,_ew,_att,_txt,_dic,_quote,_box,_naml,
+    _directory,_summary,_other);
+    DELETE FROM RAWCONTENT WHERE docid=_docid;
+    RETURN TRUE;
+END;
+$$
+LANGUAGE PLPGSQL;
