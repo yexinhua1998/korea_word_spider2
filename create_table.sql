@@ -33,3 +33,9 @@ CREATE TABLE CONTENT(
     summary text,
     other text
 );
+
+CREATE TABLE category_doc(
+    --categoryId与docid的关系表
+    categoryId int,
+    docid int
+);
