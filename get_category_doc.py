@@ -5,9 +5,10 @@ import bs4
 from bs4 import BeautifulSoup
 import re
 import pandas as pd
+import os
 
-THREAD_NUM=100
-PROCESS_NUM=20
+THREAD_NUM=10
+PROCESS_NUM=30
 
 def get_num(page):
     '''
@@ -91,7 +92,7 @@ def get_docid_from_list(arg):
         page_amount=int(page_amount)+1
     else:
         page_amount=int(page_amount)
-    pool=ThreadPool(page_amount)
+    pool=ThreadPool(THREAD_NUM)
     result=pool.map(get,[(web,url+('&page=%d'%(i+1))) for i in range(page_amount)])
     pool.close()
     pool.join()
@@ -150,8 +151,18 @@ def save_docid_with_categoryid(arg):
         None
     '''
     father,categoryid,counter=arg
+    path='./category_doc/%d.txt'%categoryid
     print('geting docid.categoryid=%d'%categoryid)
-    docid_list=get_docid_from_categoryId(categoryid)
+    if os.path.exists(path):
+        print('get category %d from file'%categoryid)
+        with open(path,'r') as f:
+            docid_list=f.read()
+        docid_list=eval(docid_list)
+    else:
+        print('get category %d from web'%categoryid)
+        docid_list=get_docid_from_categoryId(categoryid)
+        with open(path,'w') as f:
+            f.write(str(docid_list))
     print('get docid success.categoryid=%d'%categoryid)
     conn=base.DBConnect()
     for docid in docid_list:
