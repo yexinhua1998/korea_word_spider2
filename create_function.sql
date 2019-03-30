@@ -54,3 +54,19 @@ BEGIN
 END;
 $$
 LANGUAGE PLPGSQL;
+
+CREATE FUNCTION SAVE_CATEGORY_DOC(_categoryid int,_docid int)
+RETURNS boolean
+AS $$
+DECLARE
+    _num int;
+BEGIN
+    SELECT COUNT(*) FROM category_doc WHERE categoryid=_categoryid AND docid=_docid
+    INTO _num;
+    IF _num=0 THEN
+        INSERT INTO category_doc (categoryid,docid) VALUES(_categoryid,_docid);
+    END IF;
+    RETURN TRUE;
+END;
+$$
+LANGUAGE PLPGSQL;

@@ -40,8 +40,8 @@ class Web:
                 r.raise_for_status()
                 return r
             except requests.exceptions.Timeout:
-                print('web.get:timeout retry:\n%s'%url)
                 retry+=1
+                print('web.get:timeout retry:%d times\n%s'%(retry,url))
             except requests.exceptions.HTTPError:
                 if r.status_code==404:
                     raise Exception('404')
@@ -138,6 +138,11 @@ class DBConnect:
         self.cursor.execute('SELECT SAVERAWCONTENT(%d,%d,%d,$DATA$%s$DATA$);'\
         %(docid,cid,categoryid,content))
         #print('fetching result')
+        result=self.cursor.fetchall()[0]
+        return result
+
+    def save_category_doc(self,categoryid,docid):
+        self.cursor.execute('SELECT SAVE_CATEGORY_DOC(%d,%d);'%(categoryid,docid))
         result=self.cursor.fetchall()[0]
         return result
 

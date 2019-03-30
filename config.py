@@ -10,8 +10,8 @@ doc_amount=5735142
 #default args of requests.get
 web={
     'low_level_retry':10,
-    'max_retry':20,
-    'timeout':3
+    'max_retry':100,
+    'timeout':10
 }
 
 content_saver_arg={
